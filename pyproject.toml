@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claude-local"
+version = "0.1.0"
+description = "Connect Claude Code to locally-hosted LLMs with auto-detection and failover proxy"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "amu815" },
+]
+keywords = ["claude", "llm", "local", "vllm", "mlx", "ollama"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "click>=8.0",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+claude-local = "claude_local.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/amu815/claude-local"
+Repository = "https://github.com/amu815/claude-local"
