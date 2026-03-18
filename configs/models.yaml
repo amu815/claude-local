@@ -8,7 +8,7 @@ models:
     weight_size_gb: 63
     memory_gb: 80
     context_by_memory:
-      128: 262144
+      112: 262144
       96: 131072
       80: 65536
     backends:
