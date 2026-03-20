@@ -1,6 +1,7 @@
 """Main CLI for claude-local."""
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -14,6 +15,44 @@ from claude_local.config import Config
 from claude_local.detect import detect_platform, recommend_backend
 from claude_local.models.registry import ModelRegistry
 from claude_local.proxy import ProxyServer
+
+
+_CLAUDE_SETTINGS_PATH = os.path.expanduser("~/.claude/settings.json")
+
+# Env vars to set in Claude Code settings for optimal local inference.
+# CLAUDE_CODE_ATTRIBUTION_HEADER=0 prevents a header that invalidates
+# the KV cache on every request, causing ~90% slower inference.
+# See: https://unsloth.ai/docs/basics/claude-code
+_LOCAL_ENV_DEFAULTS = {
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
+}
+
+
+def _optimize_claude_settings() -> None:
+    """Ensure ~/.claude/settings.json has env vars for local inference."""
+    settings: dict = {}
+    if os.path.exists(_CLAUDE_SETTINGS_PATH):
+        with open(_CLAUDE_SETTINGS_PATH) as f:
+            try:
+                settings = json.load(f)
+            except json.JSONDecodeError:
+                settings = {}
+
+    env = settings.setdefault("env", {})
+    changed = False
+    for key, value in _LOCAL_ENV_DEFAULTS.items():
+        if env.get(key) != value:
+            env[key] = value
+            changed = True
+
+    if changed:
+        os.makedirs(os.path.dirname(_CLAUDE_SETTINGS_PATH), exist_ok=True)
+        with open(_CLAUDE_SETTINGS_PATH, "w") as f:
+            json.dump(settings, f, indent=2)
+            f.write("\n")
+        click.echo("Claude Code settings optimized (KV cache fix applied).")
+    else:
+        click.echo("Claude Code settings already optimized.")
 
 
 @click.group()
@@ -87,6 +126,10 @@ def setup():
 
     config.save()
     click.echo(f"\nConfiguration saved to {config._path}")
+
+    # 7. Optimize Claude Code settings for local inference
+    _optimize_claude_settings()
+
     click.echo("Run 'claude-local start' to begin.")
 
 
