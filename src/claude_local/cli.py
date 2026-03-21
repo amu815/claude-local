@@ -165,12 +165,28 @@ def start(no_claude: bool, tools: str):
     backend.start(model, port=8000)
     click.echo("Backend started.")
 
+    # Determine if API translation is needed
+    backend_config = model.get("backends", {}).get(backend_name, {})
+    needs_translation = not backend_config.get("native_anthropic", False)
+    thinking = model.get("thinking", True)
+    model_name = config.get("model.repo") or config.get("model.name")
+
     # Start proxy
     upstreams = config.get("upstreams") or ["http://127.0.0.1:8000"]
     proxy_host = config.get("proxy.host") or "127.0.0.1"
     proxy_port = config.get("proxy.port") or 8081
-    click.echo(f"Starting proxy on {proxy_host}:{proxy_port}...")
-    proxy = ProxyServer(upstreams=upstreams, host=proxy_host, port=proxy_port)
+    if needs_translation:
+        click.echo(f"Starting proxy on {proxy_host}:{proxy_port} (Anthropic->OpenAI translation)...")
+    else:
+        click.echo(f"Starting proxy on {proxy_host}:{proxy_port}...")
+    proxy = ProxyServer(
+        upstreams=upstreams,
+        host=proxy_host,
+        port=proxy_port,
+        translate=needs_translation,
+        model_name=model_name,
+        thinking=thinking,
+    )
 
     if no_claude:
         click.echo(f"Proxy running on {proxy_host}:{proxy_port}")
@@ -187,7 +203,6 @@ def start(no_claude: bool, tools: str):
     click.echo(f"Proxy running on {proxy_host}:{proxy_port}")
 
     # Launch Claude Code
-    model_name = config.get("model.repo") or config.get("model.name")
     click.echo(f"Launching Claude Code with model: {model_name}")
     env = os.environ.copy()
     env["ANTHROPIC_BASE_URL"] = f"http://{proxy_host}:{proxy_port}"
