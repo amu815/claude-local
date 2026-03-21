@@ -167,8 +167,37 @@ Claude Code ──► claude-local proxy (127.0.0.1:8081) ──► Backend
                     │                                        │
                     ├── Failover                             ├── vLLM (DGX Spark)
                     ├── Health check                         ├── MLX (macOS)
-                    └── Context safety valve                 └── Ollama (Windows/Linux)
+                    ├── Context safety valve                 └── Ollama (Windows/Linux)
+                    └── Anthropic→OpenAI translation (MLX/Ollama)
 ```
+
+## Performance Tips / パフォーマンス最適化
+
+### Limit tools / ツール数の制限
+
+Claude Code sends 22 tools by default (~70K chars, 79% of the prompt). Limiting to essential tools reduces prefill time dramatically, especially on MLX which lacks prefix caching:
+
+Claude Codeはデフォルトで22個のツール（~70K文字、プロンプトの79%）を送ります。`--tools`で制限するとプレフィル時間を大幅に短縮できます:
+
+```bash
+claude-local start --tools "Bash,Read,Write"       # minimal (fastest)
+claude-local start --tools "Bash,Read,Write,Edit,Glob,Grep"  # default
+claude-local start                                  # all 22 tools
+```
+
+### MLX prefix cache limitation / MLXプレフィックスキャッシュの制約
+
+MLX (v0.31) only caches exact-match prompts. Unlike vLLM's block-level prefix sharing, MLX cannot reuse KV cache when prompts share a common prefix but differ at the end. Each request with a different user message triggers a full prefill.
+
+MLX（v0.31）は完全一致のプロンプトのみキャッシュします。vLLMのブロックレベルプレフィックス共有とは異なり、末尾だけ異なるプロンプトではKVキャッシュを再利用できません。
+
+**Workaround / 対策:** Use `--tools` to reduce prompt size.
+
+### Qwen3.5 thinking mode / Qwen3.5 thinkingモード
+
+Qwen3.5 models have a "thinking" mode enabled by default that generates reasoning tokens before responding. This wastes `max_tokens` budget in agent use cases. claude-local auto-disables thinking for Qwen3.5 models.
+
+Qwen3.5はデフォルトでthinkingモードが有効で、応答前に推論トークンを生成します。claude-localはQwen3.5モデルでthinkingを自動無効化します。
 
 ## Prerequisites / 前提条件
 
