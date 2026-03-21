@@ -25,6 +25,8 @@ _CLAUDE_SETTINGS_PATH = os.path.expanduser("~/.claude/settings.json")
 # See: https://unsloth.ai/docs/basics/claude-code
 _LOCAL_ENV_DEFAULTS = {
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "0",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 }
 
 
@@ -135,7 +137,12 @@ def setup():
 
 @main.command()
 @click.option("--no-claude", is_flag=True, help="Start backend and proxy only")
-def start(no_claude: bool):
+@click.option(
+    "--tools",
+    default="Bash,Read,Write,Edit,Glob,Grep",
+    help="Comma-separated Claude Code tools to enable (fewer = faster prefill)",
+)
+def start(no_claude: bool, tools: str):
     """Start backend, proxy, and optionally Claude Code."""
     config = Config()
     backend_name = config.get("backend")
@@ -199,8 +206,12 @@ def start(no_claude: bool):
             backend.stop()
         return
 
+    claude_args = [claude_cmd, "--model", model_name]
+    if tools:
+        claude_args.extend(["--tools", tools])
+
     try:
-        subprocess.run([claude_cmd, "--model", model_name], env=env)
+        subprocess.run(claude_args, env=env)
     finally:
         proxy.stop()
         backend.stop()
